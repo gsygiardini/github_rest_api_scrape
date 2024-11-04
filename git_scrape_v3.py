@@ -2,30 +2,72 @@ import pandas as pd
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup as bs
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
 
 class Author:
-    def __init__(self, name="", repositories="", followers="", following="", contributions="", **kwargs):
+    def __init__(self, name="", public_repos="", followers="", following="", contributions="", **kwargs):
         self.name = name
-        self.repositories = repositories
+        self.repositories = public_repos
         self.followers = followers
         self.following = following
         self.contributions = contributions
         self.kwargs = kwargs
 
     def __repr__(self):
-        return f"author=<{self.name}>/#_of_repositories=<{self.repositories}>/#_of_followers=<{self.followers}>"
-               f"/#_of_followings=<{self.following}>/#_of_contributions=<{self.following}>"
+        return f"author=<{self.name}>/#_of_repositories=<{self.repositories}>/#_of_followers=<{self.followers}>/#_of_followings=<{self.following}>/#_of_contributions=<{self.following}>"
+                
 
 class Authors:
     def __init__(self):
         self.authors = {}
 
-    def __repr__(self):
-        auth = []
-        for auth in self.authors:
-            auth.append(auth.name)
+    def add_author(self, url=""):
+        if url==None or url=="":
+            print("Please provide a valid link for the author. ( ͡~ ͜ʖ ͡° )")
+            return 0
+        else:
+            response = requests.get(url)
+            data = response.json()
 
-        return auth
+            self.authors[data["login"]] = Author(**data)
+
+            html_url = self.convert_to_html_url(url)
+
+            options = webdriver.ChromeOptions()
+            options.add_argument('--ignore-certificate-errors')
+            options.add_argument('--incognito')
+            options.add_argument('--headless')
+            driver = webdriver.Chrome(options=options)
+            driver.get(html_url)
+            contrib = driver.find_elements_by_class_name("f4 mb-2 text-normal")
+
+            # response = requests.get(html_url)
+            # soup = bs(response.text, "html.parser")
+
+            # contribution_tag = soup.find_all('h2', class_="f4 mb-2 text-normal")
+            # print(contribution_tag)
+
+            # contribution_tag = soup.find('h2', class_="f4 text-normal mb-2")
+            # contribution_tag = soup.find(string="contributions in the last year").get_text()
+            # print(contribution_tag.get_text())
+
+            # self.authors[data["login"]].contributions = 
+            
+            # print(self.authors[data["login"]])
+
+    def convert_to_html_url(self, url):
+        # Me take github link and me put res api 
+        html_url = url.replace("https://api.github.com/users/", "https://github.com/")
+        return html_url
+
+    def __repr__(self):
+        auths = []
+        for auth in self.authors:
+            auths.append(auth.name)
+
+        return auths
 
 class Owner:
     def __init__(self, login="", **kwargs):
@@ -47,9 +89,6 @@ class License:
     def __repr__(self):
         return f"License(name='{self.name}, key={self.key}')"
 
-# class Commits:
-#     def __init__(self, )
-
 class PullRequest:
     def __init__(self, title="", number="", body="", state="", created_at="", closed_at="", user="", commits="", additions="", deletions="", changed_files="", **kwargs):
         self.user       = user
@@ -64,6 +103,8 @@ class PullRequest:
         self.created_at = created_at       
         self.changed_files = changed_files 
         self.kwargs     = kwargs     
+
+        self.authors = Authors()
 
     def __repr__(self):
         return f"title={self.title}\n number={self.number}\n state={self.state}\n user={self.user}"
@@ -81,7 +122,7 @@ class PullRequests:
         return f"Total requests: {num}"
 
 class GitHubRepository:
-    def __init__(self, name="", url="", token="", **kwargs):
+    def __init__(self, name="", url="", token="", max_pulls=3, **kwargs):
         self.url = url
         self.api_url = self.convert_to_api_url(url)
         self.token = token
@@ -94,7 +135,7 @@ class GitHubRepository:
         self.n_of_pulls = 0
         self.kwargs = kwargs
 
-        self.max_pulls = 10
+        self.max_pulls = max_pulls
         self.name = ""
         self.forks = ""
         self.owner = ""
@@ -106,6 +147,8 @@ class GitHubRepository:
         # Fetch and store the repository data
         self.fetch_repo_data()
         self.pulls = PullRequests()
+
+        self.authors = Authors()
 
     def convert_to_api_url(self, github_url):
         # Me take github link and me put res api 
@@ -160,7 +203,8 @@ class GitHubRepository:
             n_of_pulls = self.max_pulls
 
         for i in range(1,n_of_pulls):
-            response = requests.get(self.api_url+"/pulls/"+f"{i}", headers=self.headers)
+            idx = self.n_of_pulls - i
+            response = requests.get(self.api_url+"/pulls/"+f"{idx}", headers=self.headers)
             rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
             print(f"Remaining API calls {rate_limit_remaining}")
 
@@ -168,7 +212,9 @@ class GitHubRepository:
                 data = response.json()
                 pull = PullRequest(**data)
 
-                self.pulls.requests[f"{i}"] = pull
+                pull.authors.add_author(pull.user["url"])
+
+                self.pulls.requests[f"{idx}"] = pull
 
     def __repr__(self):
         # Me create function to print important stuff
@@ -194,6 +240,78 @@ class Repos:
             
         else:
             raise TypeError("Only instances of GitHub repositories may be added to the Scraper class ┐( ˘_˘)┌ ...")
+
+    def save_repository_data(self, repo):
+        #Me assign file path for csv
+        file_path = "repositories.csv"
+        
+        # Me check if me created previous file, if no, me create new if yes me no create
+        if os.path.exists(file_path):
+            repo_df = pd.read_csv(file_path)
+        else:
+            repo_df = pd.DataFrame(columns=["name", "description", "watchers", "forks", "license"])
+
+        if not ((repo_df["name"] == repo.name) & (repo_df["description"] == repo.description)).any():
+            new_data = {
+                "name": repo.name,
+                "description": repo.description,
+                "watchers": repo.watchers,
+                "forks": repo.forks,
+                "license": repo.license.name if repo.license else None
+            }
+            repo_df = repo_df.append(new_data, ignore_index=True)
+            repo_df.to_csv(file_path, index=False)
+            print(f"Repository data saved to {file_path}")
+        else:
+            print("Repository data already exists in repositories.csv")
+
+    def save_pull_requests_data(self, repo):
+        #Me assign file path for csv
+        file_path = f"repos/{repo.owner.login}-{repo.name}.csv"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        if os.path.exists(file_path):
+            pulls_df = pd.read_csv(file_path)
+        else:
+            pulls_df = pd.DataFrame(columns=["title", "number", "state", "commits", "additions", "deletions", "changed_files"])
+
+        for pull_id, pull in repo.pulls.requests.items():
+            if not (pulls_df["number"] == int(pull.number)).any():
+                new_pull_data = {
+                    "title": pull.title,
+                    "number": pull.number,
+                    "state": pull.state,
+                    "commits": pull.commits,
+                    "additions": pull.additions,
+                    "deletions": pull.deletions,
+                    "changed_files": pull.changed_files
+                }
+                pulls_df = pulls_df.append(new_pull_data, ignore_index=True)
+
+        pulls_df.to_csv(file_path, index=False)
+        print(f"Pull requests data saved to {file_path}")
+
+    def save_user_data(self, user):
+        file_path = "users.csv"
+
+        if os.path.exists(file_path):
+            users_df = pd.read_csv(file_path)
+        else:
+            users_df = pd.DataFrame(columns=["name", "public_repos", "followers", "following", "contributions"])
+
+        if not (users_df["name"] == user.name).any():
+            new_user_data = {
+                "name": user.name,
+                "public_repos": user.repositories,
+                "followers": user.followers,
+                "following": user.following,
+                "contributions": user.contributions
+            }
+            users_df = users_df.append(new_user_data, ignore_index=True)
+            users_df.to_csv(file_path, index=False)
+            print(f"User data saved to {file_path}")
+        else:
+            print(f"User {user.name} data already exists in users.csv")
 
     def print_repo(self, name=""): 
         if name=="" or name==None:
@@ -227,7 +345,7 @@ class Repos:
 repos = Repos()
 # repos.add_repo(url="https://github.com/ibm-developer-skills-network/xzceb-flask_eng_fr",token="")
 
-repos.add_repo(url="https://github.com/JabRef/jabref",token="")
+repos.add_repo(url="https://github.com/JabRef/jabref",token=TOKEN, max_pulls=3)
 
 # repos.print_repo_info("xzceb-flask_eng_fr")
 
