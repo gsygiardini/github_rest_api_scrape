@@ -35,22 +35,14 @@ class Authors:
 
             html_url = self.convert_to_html_url(url)
 
-            options = webdriver.ChromeOptions()
-            options.add_argument('--ignore-certificate-errors')
-            options.add_argument('--incognito')
-            options.add_argument('--headless')
-            driver = webdriver.Chrome(options=options)
-            driver.get(html_url)
-            contrib = driver.find_elements_by_class_name("f4 mb-2 text-normal")
+            response = requests.get(html_url)
+            soup = bs(response.text, "html.parser")
 
-            # response = requests.get(html_url)
-            # soup = bs(response.text, "html.parser")
-
-            # contribution_tag = soup.find_all('h2', class_="f4 mb-2 text-normal")
-            # print(contribution_tag)
+            contribution_tag = soup.find_all('h2', class_="f4 mb-2 text-normal")
+            print(contribution_tag)
 
             # contribution_tag = soup.find('h2', class_="f4 text-normal mb-2")
-            # contribution_tag = soup.find(string="contributions in the last year").get_text()
+            # contribution_tag = soup.find(string="contributions in the last year")
             # print(contribution_tag.get_text())
 
             # self.authors[data["login"]].contributions = 
@@ -342,14 +334,14 @@ class Repos:
             print(f"No repository named {name}. ヾ(oﾟДﾟ)ﾉ")
 
 
-repos = Repos()
-# repos.add_repo(url="https://github.com/ibm-developer-skills-network/xzceb-flask_eng_fr",token="")
+# repos = Repos()
+# # repos.add_repo(url="https://github.com/ibm-developer-skills-network/xzceb-flask_eng_fr",token="")
 
-repos.add_repo(url="https://github.com/JabRef/jabref",token=TOKEN, max_pulls=3)
+# repos.add_repo(url="https://github.com/JabRef/jabref",token=TOKEN, max_pulls=3)
 
-# repos.print_repo_info("xzceb-flask_eng_fr")
+# # repos.print_repo_info("xzceb-flask_eng_fr")
 
-repos.repositories["jabref"].fetch_pull_requests()
+# repos.repositories["jabref"].fetch_pull_requests()
 
 
 # repos.print_repo("xzceb-flask_eng_fr")
