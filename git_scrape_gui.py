@@ -8,14 +8,14 @@ from datetime import datetime
 from repos_module import Repos
 
 class PrintRedirector:
-    """Custom class to redirect print output to the Text widget."""
+    # We created a custom class to output the prints to the GUI
     def __init__(self, text_widget):
         self.text_widget = text_widget
 
     def write(self, text):
         self.text_widget.insert(tk.END, text)
-        self.text_widget.see(tk.END)  # Scroll to the end of the Text widget
-        self.text_widget.update_idletasks()  # Update the UI immediately
+        self.text_widget.see(tk.END) #Scrolling to the end of the terminal in the GUI
+        self.text_widget.update_idletasks() #Constant update command
 
     def flush(self):  # Required for compatibility with Python's print system
         pass
@@ -35,7 +35,7 @@ class GitHubApp:
         self.setup_layout()
 
     def setup_layout(self):
-        # Left sidebar for main buttons
+        # We created a sidebar for a "main menu"
         sidebar = ttk.Frame(self.root, width=200)
         sidebar.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 
@@ -54,34 +54,36 @@ class GitHubApp:
         ttk.Button(sidebar, text="Save Pull Request Data", command=self.save_pull_requests_data).pack(fill=tk.X, pady=5)
         ttk.Button(sidebar, text="Save Repository Data", command=self.save_repository_data).pack(fill=tk.X, pady=5)
 
-
         ttk.Label(sidebar, text="Max Pull Requests:").pack(pady=5)
         max_pr_spinbox = ttk.Spinbox(sidebar, from_=1, to=100, textvariable=self.max_pull_requests)
         max_pr_spinbox.pack(fill=tk.X, pady=5)
 
+        #Terminal window for the output of information from the program
         self.output_box = tk.Text(self.root, wrap='word', bg='black', fg='white', height=10)
         self.output_box.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         sys.stdout = PrintRedirector(self.output_box)
 
     def clear_content_frame(self):
-        """Clears the content frame on the right side."""
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
     def collect_repo_data(self):
-        self.clear_content_frame()
+        self.clear_content_frame() #Clears previous contents from the frame
 
+        #Box for selecting the owner for the Repo
         ttk.Label(self.content_frame, text="Owner:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         owner_entry = ttk.Entry(self.content_frame)
         owner_entry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
         owner_entry.insert(0, self.default_owner)
 
+        #Box for selecting the Repo
         ttk.Label(self.content_frame, text="Repository:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         repo_entry = ttk.Entry(self.content_frame)
         repo_entry.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
         repo_entry.insert(0, self.default_repo)
 
+        # GitHub login token for increased pulls
         TOKEN = ""
 
         def start_collection():
@@ -100,7 +102,7 @@ class GitHubApp:
         ttk.Button(self.content_frame, text="Collect Data", command=start_collection).grid(row=2, column=0, columnspan=2, pady=10)
 
     def show_repositories_menu(self):
-        self.clear_content_frame()  # Clear the right frame
+        self.clear_content_frame() #Clears previous contents from the frame
 
         # Display collected repositories in the right content area
         for idx, repo_name in enumerate(self.repos.repositories.keys()):
@@ -116,23 +118,24 @@ class GitHubApp:
 
         repo = self.repos.repositories[repo_name]
 
-        open_pulls = sum(1 for pull in repo.pulls.requests.values() if pull.state == 'open')
-        closed_pulls = sum(1 for pull in repo.pulls.requests.values() if pull.state == 'closed')
+        open_pulls = repo.open_issues
+        closed_pulls = repo.n_of_pulls - repo.open_issues # API does not have closed pulls so we make closed_pulls = total_pulls - open_pulls
         num_users = len(repo.authors.authors)
         oldest_pull_date = min((datetime.strptime(pull.created_at, "%Y-%m-%dT%H:%M:%SZ") for pull in repo.pulls.requests.values()), default="N/A")
 
         summary_text = (
             f"Number of open pull requests: {open_pulls}\n"
             f"Number of closed pull requests: {closed_pulls}\n"
-            f"Number of unique users: {num_users}\n"
+            f"Number of unique users (Consiring first page only...): {num_users}\n"
             f"Date of the oldest pull request: {oldest_pull_date}"
         )
 
         ttk.Label(self.content_frame, text=summary_text, justify=tk.LEFT).pack(padx=10, pady=10)
 
     def show_pull_requests(self, repo_name):
-        self.clear_content_frame()
+        self.clear_content_frame() #Clears previous contents from the frame
 
+        # Display the pulls in numerical sequence from last to first
         repo = self.repos.repositories[repo_name]
         for idx, pull in enumerate(repo.pulls.requests.values()):
             ttk.Label(self.content_frame, text=f"{pull.title} (#{pull.number})").grid(row=idx, column=0, sticky=tk.W, padx=5, pady=5)
@@ -192,10 +195,11 @@ class GitHubApp:
         ttk.Label(self.content_frame, text=correlation.to_string()).pack(pady=10)
 
     def print_repo_info(self):
-        # Clear the content frame and define the callback function
-        self.clear_content_frame()
+        self.clear_content_frame() #Clears previous contents from the frame
     
         # Define a callback function to handle the repository name after submission
+        # i.e. (After I click the button I can click it again, so the function keeps on running in a loop instead of 
+        # returning a value and closing. Before using this, the program would close if we clicked the button multiple times.)
         def on_repo_submit(repo_name):
             if repo_name:
                 # Call print_repo_info from Repos class
@@ -209,7 +213,7 @@ class GitHubApp:
     def save_user_data(self):
         self.clear_content_frame()
         
-        # Define a callback function to handle user input once submitted
+        # Define a callback function to handle user input once submitted (same for previous function)
         def on_user_submit(user_name):
             print(f"This is the user: {user_name}")
             if user_name:
@@ -219,8 +223,7 @@ class GitHubApp:
         self.get_user(on_submit_callback=on_user_submit)
         
     def save_pull_requests_data(self):
-        # Clear the content frame and define the callback function
-        self.clear_content_frame()
+        self.clear_content_frame() # Clear the content frame and define the callback function
     
         # Define a callback function to handle the repository name after submission
         def on_repo_submit(repo_name):
@@ -235,8 +238,7 @@ class GitHubApp:
         self.get_repo_name_from_user(on_submit_callback=on_repo_submit)
 
     def save_repository_data(self):
-        # Clear content and get the repository name from the user
-        self.clear_content_frame()
+        self.clear_content_frame()# Clear the content frame and define the callback function
         
         def on_repo_submit(repo_name):
             # Proceed with saving once the repo name is obtained
@@ -245,6 +247,7 @@ class GitHubApp:
             if repo:
                 file_path = "repositories.csv"
                 
+                # No repetition condition for the CSV file...
                 # Check if the file exists, load it, or create a new DataFrame
                 if os.path.exists(file_path):
                     repo_df = pd.read_csv(file_path)
@@ -283,17 +286,24 @@ class GitHubApp:
         for widget in self.content_frame.winfo_children():
             widget.destroy()
     
+        # Collect all unique repository names
+        existing_repo_names = list(self.repos.repositories.keys())
+    
         # Create a frame for entering the repository name
         name_entry_frame = ttk.Frame(self.content_frame)
         name_entry_frame.pack(pady=10)
     
-        ttk.Label(name_entry_frame, text="Enter Repository Name:").grid(row=0, column=0)
-        name_entry = ttk.Entry(name_entry_frame, width=25)
-        name_entry.grid(row=0, column=1, padx=5)
+        # Label for the repository input
+        ttk.Label(name_entry_frame, text="Select or Enter Repository Name:").grid(row=0, column=0)
+    
+        # Dropdown bar that shows all of the already collected repositories (Combobox)
+        repo_name_combobox = ttk.Combobox(name_entry_frame, values=existing_repo_names, width=25)
+        repo_name_combobox.grid(row=0, column=1, padx=5)
+        repo_name_combobox.set("Select or enter repository")  # Placeholder text
     
         def submit_name():
-            # Capture the entered repository name
-            self.repo_name = name_entry.get()
+            # Capture the selected or entered repository name
+            self.repo_name = repo_name_combobox.get()
             print(f"Repository name submitted: {self.repo_name}")
     
             # Call the callback function with the repository name if provided
@@ -325,7 +335,7 @@ class GitHubApp:
         # Label for the user input
         ttk.Label(name_entry_frame, text="Select or Enter User Name:").grid(row=0, column=0)
     
-        # Create a Combobox for selecting existing users or typing a new one
+        # Dropdown bar that shows all of the already collected users (Combobox)
         user_name_combobox = ttk.Combobox(name_entry_frame, values=existing_users, width=25)
         user_name_combobox.grid(row=0, column=1, padx=5)
         user_name_combobox.set("Select or enter user")  # Placeholder text
@@ -344,48 +354,49 @@ class GitHubApp:
         submit_button.grid(row=0, column=2, padx=5)
 
 
+    # Still needs work. I already created a value that stores the number of pulls per day in the class Repositories.
+    # we just need to change this function to plot the results
     def create_all_repos_visualizations(self):
         self.clear_content_frame() 
         ttk.Label(self.content_frame, text="Feature in Progress: Visualizations for all repositories.").pack(pady=10)
 
-        repo = self.repos.repositories[repo_name]
-        df = pd.DataFrame([{
-            "state": pull.state,
-            "commits": pull.commits,
-            "additions": pull.additions,
-            "deletions": pull.deletions,
-            "changed_files": pull.changed_files,
-            "author_association": pull.user.get("author_association", "None")
-        } for pull in repo.pulls.requests.values()])
 
-        # Boxplot: Closed vs Open Pull Requests (Commits)
-        plt.figure()
-        df.boxplot(column="commits", by="state")
-        plt.title("Commits by Pull Request State")
-        plt.savefig(f"{repo_name}_commits_boxplot.png")
+        # for repo in self.repos.repositories:
+        
 
-        # Boxplot: Additions and Deletions by State
-        plt.figure()
-        df.boxplot(column=["additions", "deletions"], by="state")
-        plt.title("Additions and Deletions by Pull Request State")
-        plt.savefig(f"{repo_name}_add_del_boxplot.png")
-
-        # Boxplot: Changed Files by Author Association
-        plt.figure()
-        df.boxplot(column="changed_files", by="author_association")
-        plt.title("Changed Files by Author Association")
-        plt.savefig(f"{repo_name}_changed_files_boxplot.png")
-
-        # Scatterplot: Additions vs Deletions
-        plt.figure()
-        plt.scatter(df["additions"], df["deletions"])
-        plt.xlabel("Additions")
-        plt.ylabel("Deletions")
-        plt.title("Additions vs. Deletions Scatterplot")
-        plt.savefig(f"{repo_name}_add_vs_del_scatter.png")
-        plt.close('all')
-
-        messagebox.showinfo("Visualizations Created", f"Visualizations for {repo_name} saved.")
+        #     df = pd.DataFrame([{
+        #         "state": pull.state,
+        #         "commits": pull.commits,
+        #         "additions": pull.additions,
+        #         "deletions": pull.deletions,
+        #         "changed_files": pull.changed_files,
+        #         "author_association": pull.user.get("author_association", "None")
+        #     } for pull in repo.pulls.requests.values()])
+    
+        #     plt.figure()
+        #     df.boxplot(column="commits", by="state")
+        #     plt.title("Commits by Pull Request State")
+        #     plt.savefig(f"{repo_name}_commits_boxplot.png")
+    
+        #     plt.figure()
+        #     df.boxplot(column=["additions", "deletions"], by="state")
+        #     plt.title("Additions and Deletions by Pull Request State")
+        #     plt.savefig(f"{repo_name}_add_del_boxplot.png")
+    
+        #     plt.figure()
+        #     df.boxplot(column="changed_files", by="author_association")
+        #     plt.title("Changed Files by Author Association")
+        #     plt.savefig(f"{repo_name}_changed_files_boxplot.png")
+    
+        #     plt.figure()
+        #     plt.scatter(df["additions"], df["deletions"])
+        #     plt.xlabel("Additions")
+        #     plt.ylabel("Deletions")
+        #     plt.title("Additions vs. Deletions Scatterplot")
+        #     plt.savefig(f"{repo_name}_add_vs_del_scatter.png")
+        #     plt.close('all')
+    
+        # messagebox.showinfo("Visualizations for all repos created...")
 
     def calculate_user_correlations(self):
         self.clear_content_frame()

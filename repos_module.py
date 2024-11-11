@@ -106,6 +106,7 @@ class PullRequest:
 class PullRequests:
     def __init__(self):
         self.requests = {}
+        self.daily_counts = {}
 
     def __repr__(self):
         num = []
@@ -115,19 +116,36 @@ class PullRequests:
             
         return f"Total requests: {num}"
 
+    def daily_open_closed_counts(self):
+        # Temporary dictionary to count open and closed pull requests by date
+        daily_counts = defaultdict(lambda: {"open": 0, "closed": 0})
+        for pull in self.requests.values():
+            created_date = datetime.strptime(pull.created_at, "%Y-%m-%dT%H:%M:%SZ").date()
+            daily_counts[created_date]["open"] += 1
+
+            if pull.state == "closed" and pull.closed_at:
+                closed_date = datetime.strptime(pull.closed_at, "%Y-%m-%dT%H:%M:%SZ").date()
+                daily_counts[closed_date]["closed"] += 1
+        
+        self.daily_counts = dict(daily_counts)
+
+        for date, counts in sorted(self.daily_counts.items()):
+            print(f"{date}: Open: {counts['open']}, Closed: {counts['closed']}")
+
 class GitHubRepository:
     def __init__(self, **kwargs):
         self.url = kwargs.get("url")
         self.api_url = self.convert_to_api_url(self.url)
-        self.token = kwargs.get("token")#token
+        self.token = kwargs.get("token")
         self.headers = {
             "User-Agent": "request",
             "Authorization": f"token {self.token}" if self.token else None,
             "Accept": "application/vnd.github.v3+json"
         }
         self.date_of_collection = ""
+
         self.n_of_pulls = 0
-        self.kwargs = kwargs
+        self.open_issues = kwargs.get("open_issues")
 
         self.max_pulls = kwargs.get("max_pulls",4)
 
@@ -143,6 +161,7 @@ class GitHubRepository:
         self.pulls = PullRequests()
 
         self.authors = Authors()
+        self.kwargs = kwargs
 
     def convert_to_api_url(self, github_url):
         # Me take github link and me put res api 
