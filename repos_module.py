@@ -155,7 +155,6 @@ class GitHubRepository:
         self.license = ""
         self.watchers = ""
         self.description = ""
-        self.date_of_collection = ""
 
         self.fetch_repo_data()
         self.pulls = PullRequests()
