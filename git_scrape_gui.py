@@ -83,8 +83,8 @@ class GitHubApp:
         repo_entry.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
         repo_entry.insert(0, self.default_repo)
 
-        # GitHub login token for increased pulls
-        TOKEN = ""
+        # GitHub fine-grain token for increased pulls and more data (expires Jan-01-2025)
+        TOKEN = "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"
 
         def start_collection():
             owner = owner_entry.get()
@@ -361,49 +361,45 @@ class GitHubApp:
         ttk.Label(self.content_frame, text="Feature in Progress: Visualizations for all repositories.").pack(pady=10)
 
 
-        # for repo in self.repos.repositories:
+        for repo in self.repos.repositories:
         
 
-        #     df = pd.DataFrame([{
-        #         "state": pull.state,
-        #         "commits": pull.commits,
-        #         "additions": pull.additions,
-        #         "deletions": pull.deletions,
-        #         "changed_files": pull.changed_files,
-        #         "author_association": pull.user.get("author_association", "None")
-        #     } for pull in repo.pulls.requests.values()])
+            df = pd.DataFrame([{
+                "state": pull.state,
+                "commits": pull.commits,
+                "additions": pull.additions,
+                "deletions": pull.deletions,
+                "changed_files": pull.changed_files,
+                "author_association": pull.user.get("author_association", "None")
+            } for pull in self.repos.repositories[repo].pulls.requests.values()])
     
-        #     plt.figure()
-        #     df.boxplot(column="commits", by="state")
-        #     plt.title("Commits by Pull Request State")
-        #     plt.savefig(f"{repo_name}_commits_boxplot.png")
+            plt.figure()
+            df.boxplot(column="commits", by="state")
+            plt.title("Commits by Pull Request State")
+            plt.savefig(f"{repo}_commits_boxplot.png")
     
-        #     plt.figure()
-        #     df.boxplot(column=["additions", "deletions"], by="state")
-        #     plt.title("Additions and Deletions by Pull Request State")
-        #     plt.savefig(f"{repo_name}_add_del_boxplot.png")
+            plt.figure()
+            df.boxplot(column=["additions", "deletions"], by="state")
+            plt.title("Additions and Deletions by Pull Request State")
+            plt.savefig(f"{repo}_add_del_boxplot.png")
     
-        #     plt.figure()
-        #     df.boxplot(column="changed_files", by="author_association")
-        #     plt.title("Changed Files by Author Association")
-        #     plt.savefig(f"{repo_name}_changed_files_boxplot.png")
+            plt.figure()
+            df.boxplot(column="changed_files", by="author_association")
+            plt.title("Changed Files by Author Association")
+            plt.savefig(f"{repo}_changed_files_boxplot.png")
     
-        #     plt.figure()
-        #     plt.scatter(df["additions"], df["deletions"])
-        #     plt.xlabel("Additions")
-        #     plt.ylabel("Deletions")
-        #     plt.title("Additions vs. Deletions Scatterplot")
-        #     plt.savefig(f"{repo_name}_add_vs_del_scatter.png")
-        #     plt.close('all')
+            plt.figure()
+            plt.scatter(df["additions"], df["deletions"])
+            plt.xlabel("Additions")
+            plt.ylabel("Deletions")
+            plt.title("Additions vs. Deletions Scatterplot")
+            plt.savefig(f"{repo}_add_vs_del_scatter.png")
+            plt.close('all')
     
-        # messagebox.showinfo("Visualizations for all repos created...")
+        messagebox.showinfo("Visualizations for all repos created...")
 
     def calculate_user_correlations(self):
         self.clear_content_frame()
-
-        # if not self.repos.authors.authors:
-        #     ttk.Label(self.content_frame, text="No author data available.").pack(pady=10)
-        #     return
 
         ttk.Label(self.content_frame, text="Feature in Progress: User data correlations.").pack(pady=10)
 
@@ -415,12 +411,20 @@ class GitHubApp:
             "contributions": []
         }
 
-        for author_name, author in self.repos.authors.authors.items():
-            data["name"].append(author.name)
-            data["repositories"].append(author.repositories)
-            data["followers"].append(author.followers)
-            data["following"].append(author.following)
-            data["contributions"].append(author.contributions)
+        # Iterate over all repositories
+        for repo_name, repo in self.repos.repositories.items():
+            # Iterate over all authors in the current repository
+            for author_name, author in repo.authors.authors.items():
+                data["name"].append(author.name)
+                print(data["name"])
+                data["repositories"].append(author.repositories)
+                print(data["repositories"])
+                data["followers"].append(author.followers)
+                print(data["followers"])
+                data["following"].append(author.following)
+                print(data["following"])
+                data["contributions"].append(author.contributions)
+                print(data["contributions"])
 
         df = pd.DataFrame(data)
 
@@ -456,4 +460,10 @@ if __name__ == "__main__":
     root.minsize(1400, 400)    # Set minimum window size to ensure visibility
 
     app = GitHubApp(root)
+
+    def on_closing():
+        # Clean up resources
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)  # Hook into window close event
     root.mainloop()

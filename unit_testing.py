@@ -1,6 +1,5 @@
 import unittest
 import repos_module
-import git_scrape_gui
 
 class TestSuite(unittest.TestCase):
     def test_num_repos(self):

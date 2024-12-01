@@ -142,4 +142,69 @@ This file is responsible for the user interface element of our project, giving t
 
 This file does not contain solutions to the listed requirements, but instead contains a test suite for ensuring that the program runs as intended by checking for correct object instances, API rate limits, and number of arguments for collecting information such as pull request, author, and repository information.
 
-## Example Outputs
+### Example Outputs
+
+#### Collecting Repositories
+![Collecting Repositories](./images/collect_repos.png "Collecting Repositories")
+
+#### Listing Collected Repositories + Repository-Specific Options
+![Listed Repositories](./images/listed_repos.png "Listed Repositories")
+
+##### Collected Repositories Submenu - Show Summary
+![Show Summary Submenu](./images/show_summary.png "Show Summary Submenu")
+
+##### Collected Repositories Submenu - Show Pull Requests
+![Show Pull Requests Submenu](./images/show_pull_requests.png "Show Pull Requests Submenu")
+
+##### Collected Repositories Submenu - Show User Correlations
+![Show User Correlations](./images/correlations.png "Show User Correlations")
+
+#### Calculating User Correlations
+![User Correlations](./images/user_correlations.png "User Correlations")
+
+#### Print Repository Information
+![AISUITE Repository Information](./images/info_aisuite.png "AISUITE Repository Information")
+![XCZEB Repository Information](./images/info_xzceb.png "XZCEB Repository Infromation")
+
+## System Usage
+* Running the Code
+    - To run the program, simply execute the git_scrape_gui.py file either from the console or from your preferred IDE.
+    
+* Layout
+    - On the right side of the menu is a list of options that can be employed in the collection and analysis of repository data.
+    - Central to the screen is the command terminal through which you can see outputs from the data collection/analysis process
+    - The right side of the screen is where submenus and data will appear when contextually relevant.
+
+* Collecting Repository Information
+    - Pressing the "Collect Data for a Repository" button will open a submenu on the right side of the command window.
+    - Two fields are presented, "Owner" and "Repository'. These fields expect the repository owner and the name of the repository respectively. If either field is populated improperly data collection will fail to be collected.
+    - This system facilitates multiple repository collection. Once collection for one repository concludes, a popup will appear informing you. At this time, you may input the owner and name of additional repositories and collect data for all of them.
+    - Occasionally, the system will be rate limited, at which point it will begin to fail in collecting the specific author information for a repository. When this occurs, the system will begin attempting to retry data collection at regular intervals until 5 attempts have been made, at which point the system will stop making attempts for that author. This is expected behavior, and result of collecting such granular data at a rapid pace. Often, this results in the loss of one or two authors, but the majority are collected successfully as a result of the collection delay.
+
+* Show All Collected Repositories
+    - This option pulls up a submenu that lists all the repositories for which data has been collected. Each repository has a series of options for producing data specific to that repository.
+    - Show Summary Sub-Option: This option will print a summary of the repository to the console.
+    - Show Pull Requests Sub-Option: This option will print a list of the first 25 currently open pull requests on the right of the console.
+    - Generate Visuals Sub-Option: This option will generate a series of graphs related to the repository and store them in the same folder as the source code. Graph filenames will take the form "<repository_name>_<graph_type>.png" 
+    - Calculate Correlations Sub-Option: This option will generate correlations between contributors to the repository and display on the right side of the console. 
+
+* Generate Visuals for All Repositories
+    - Choosing this will generate relevant graphs for all the currently collected repositories. These files will be stored in the same directory as the source code and take the form "<repository_name>_<graph_type>.png"
+
+* Calculate User Data Correlations
+    - This option will calculate correlations between user data for each collected repository and display them to the user on the right side of the screen.
+
+* Print Repo Info
+    - Selecting this option pulls up a dropdown menu on the right side of the screen from which you can select a repository and print the information about it to the console.
+
+* Save User Data
+    - Selecting this option will pull up a dropdown menu on the right side of the screen from which you can select a user from amongst all the users and write their data to a CSV file. All the user data will be collated into a singular file, so you can select as many users as you'd like and all their data will be written to the same file.
+
+* Save Pull Request Data
+    - Selecting this option will pull up a dropdown menu on the right side of the screen from which you can select a repository from amongst all the repositories and write it's data to a CSV file in the "/repos" directory.
+
+* Save Repository Data
+    - Selecting this option will pull up a dropdown menu on the right side of the screen from which you can select a repository from amongst all the repositories and write it's data to a global CSV called "repositories.csv" that will be stored in the same directory as the source code. You can write subsequent repository information to this CSV similar to the User Data.
+
+* Max Pull Requests
+    - You can adjust the amount of collected pull requests for each repository by increasing/decreasing this value.

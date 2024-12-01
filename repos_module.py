@@ -2,10 +2,7 @@ import os
 import pandas as pd
 import requests
 from datetime import datetime
-from bs4 import BeautifulSoup as bs
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-
+import time
 
 class Author:
     def __init__(self, **kwargs):
@@ -13,55 +10,86 @@ class Author:
         self.repositories = kwargs.get("public_repos")
         self.followers = kwargs.get("followers")
         self.following = kwargs.get("following")
-        self.contributions = kwargs.get("contributions",0)
+        self.contributions = 0
         self.kwargs = kwargs
 
     def __repr__(self):
-        return f"author=<{self.name}>/#_of_repositories=<{self.repositories}>/#_of_followers=<{self.followers}>/#_of_followings=<{self.following}>/#_of_contributions=<{self.following}>"
+        return f"author=<{self.name}>/#_of_repositories=<{self.repositories}>/#_of_followers=<{self.followers}>/#_of_followings=<{self.following}>/#_of_contributions=<{self.contributions}>\n"
                 
-
 class Authors:
     def __init__(self):
         self.authors = {}
 
-    def add_author(self, url=""):
-        if url==None or url=="":
-            print("Please provide a valid link for the author. ( ͡~ ͜ʖ ͡° )")
-            return 0
-        else:
-            response = requests.get(url)
+    def get_with_retries(self, url, retries=3, delay=2):
+        for attempt in range(retries):
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    return response.json()
+                print(f"Attempt {attempt + 1} failed with status {response.status_code}. Retrying...")
+            except requests.exceptions.RequestException as e:
+                print(f"Attempt {attempt + 1} failed with error: {e}. Retrying...")
+            time.sleep(delay)
+        raise Exception("Failed to fetch data after multiple attempts.")
+
+    def fetch_contributions(self, username, start_date, end_date):
+        # GraphQL query
+        query = """
+        query($login: String!, $from: DateTime!, $to: DateTime!) {
+            user(login: $login) {
+                contributionsCollection(from: $from, to: $to) {
+                    contributionCalendar {
+                        totalContributions
+                    }
+                }
+            }
+        }
+        """
+
+        # Variables for the query
+        variables = {
+            "login": username,
+            "from": start_date,
+            "to": end_date
+        }
+
+        # Github fine-grain token for increased pulls and more data (expires Jan-01-2025)
+        TOKEN = "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"
+
+        # Send the request
+        response = requests.post(
+            "https://api.github.com/graphql",
+            json={"query": query, "variables": variables},
+            headers={"Authorization": f"Bearer {TOKEN}"}
+        )
+    
+        if response.status_code == 200:
+            # Return the data
             data = response.json()
+            total_contributions = data["data"]["user"]["contributionsCollection"]["contributionCalendar"]["totalContributions"]
+            print(f"{username} made {total_contributions} contributions from {start_date} to {end_date}.")
+            return total_contributions
+        else:
+            print(f"Error: {response.status_code}, {response.json()}")
+            return None
 
-            print(f"Found author {data["login"]}")
+    def add_author(self, url):
+        # Store url in a temp variable to prevent from changing it
+        temp = url
+        # Extract the username from the temp variable
+        username = temp.split("/")[-1]
+        print(f"Extracted username: {username}")
+        try:
+            # Collect general data with standard REST api requests
+            data = self.get_with_retries(url=url, retries=5, delay=3)
+            self.authors[username] = Author(**data)
 
-            self.authors[data["login"]] = Author(**data)
+            # Get contribution data via GraphQL query
+            self.authors[username].contributions = self.fetch_contributions(username, "2023-01-01T00:00:00Z", "2023-12-31T23:59:59Z")
+            print(self.authors[username])
 
-            html_url = self.convert_to_html_url(url)
-
-            response = requests.get(html_url)
-            soup = bs(response.text, "html.parser")
-
-            contribution_tag = soup.find_all('h2', class_="f4 mb-2 text-normal")
-
-            # contribution_tag = soup.find('h2', class_="f4 text-normal mb-2")
-            # contribution_tag = soup.find(string="contributions in the last year")
-            # print(contribution_tag.get_text())
-
-            # self.authors[data["login"]].contributions = 
-            
-            # print(self.authors[data["login"]])
-
-    def convert_to_html_url(self, url):
-        # Me take github link and me put res api 
-        html_url = url.replace("https://api.github.com/users/", "https://github.com/")
-        return html_url
-
-    # def __repr__(self):
-    #     auths = []
-    #     for auth in self.authors:
-    #         auths.append(auth.name)
-
-    #     return auths
+        except Exception as e:
+            print(f"An error occurred for {username}: {e}")
 
 class Owner:
     def __init__(self, login="", **kwargs):
@@ -69,7 +97,7 @@ class Owner:
         self.kwargs = kwargs
 
     def __repr__(self):
-        return f"Owner(login={self.login})"
+        return f"Owner(login={self.login})\n"
 
 class License:
     def __init__(self, **kwargs):
@@ -81,7 +109,7 @@ class License:
         self.kwargs  = kwargs
 
     def __repr__(self):
-        return f"License(name='{self.name}, key={self.key}')"
+        return f"License(name='{self.name}, key={self.key}')\n"
 
 class PullRequest:
     def __init__(self, **kwargs):
@@ -101,7 +129,7 @@ class PullRequest:
         self.author = Author()
 
     def __repr__(self):
-        return f"title={self.title}\n number={self.number}\n state={self.state}\n user={self.user["login"]}"
+        return f"title={self.title}\n number={self.number}\n state={self.state}\n user={self.user['login']}\n"
 
 class PullRequests:
     def __init__(self):
@@ -236,7 +264,7 @@ class GitHubRepository:
 
     def __repr__(self):
         # Me create function to print important stuff
-        return f"owner=<{self.owner}>/name=<{self.name}>: description=<{self.description}> (watchers=<{self.watchers}>)"
+        return f"owner=<{self.owner}>/name=<{self.name}>: description=<{self.description}> (watchers=<{self.watchers}>)\n"
 
         # return (f"<GitHubRepository(name='{self.name}', full_name='{self.full_name}', "
                 # f"private={self.private}, description='{self.description}', forks={self.forks})>")
