@@ -108,8 +108,6 @@ The program will be able to create visual representations of the data collected,
     A line graph comparing the number of open/closed pull requests per day
     A bar plot comparing the number of users per repository
 
-## Solutions
-
 ## Source Code Overview
 
 In our project, we have two Python files for implementing our solutions, and a python file for unit testing.
